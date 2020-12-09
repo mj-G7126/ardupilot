@@ -33,7 +33,7 @@ $ . ~/.profile
   ```
 
 ## THE PEACH K1 Board
-![THEPEACH K1](./boards/thepeach/k1/THEPEACH_K1.png)
+![THEPEACH K1](./libraries/AP_HAL_ChibiOS/hwdef/thepeach-k1/THEPEACH_K1.png)
  * How to bulid THE PEACH K1's firmware
 ```bash
 $ ./waf clean
@@ -47,7 +47,7 @@ $ ./waf copter
 
 
 ## THE PEACH R1 Board
-![THEPEACH R1](./boards/thepeach/r1/THEPEACH_R1.png)
+![THEPEACH R1](./libraries/AP_HAL_ChibiOS/hwdef/thepeach-r1/THEPEACH_R1.png)
  * How to bulid THE PEACH R1's firmware
 ```bash
 $ ./waf clean
