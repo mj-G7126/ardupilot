@@ -5,6 +5,9 @@
 uint64_t now = 0;
 uint64_t prev = 0;
 uint8_t count = 0;
+uint32_t interval = 0;
+uint32_t pre_value = 0;
+uint32_t now_value = 0;
 
 
 // Code to Write and Read packets from AP_Logger log memory
@@ -90,8 +93,17 @@ void Copter::Log_Write_Attitude()
 
     now = hal.util->get_hw_rtc();
 
-    if(count > 10)
-    gcs().send_text(MAV_SEVERITY_INFO,"Interval : %d \n",prev - now);
+    if(count > 50)
+    {
+        interval = -(prev - now);
+        pre_value = prev / 1000;
+        now_value = now / 1000;
+        gcs().send_text(MAV_SEVERITY_INFO,"pre_v : %d \n",pre_value);
+        gcs().send_text(MAV_SEVERITY_INFO,"now_v : %d \n",now_value);
+        gcs().send_text(MAV_SEVERITY_INFO,"interval : %d \n",interval);
+        count = 0;
+    }
+    
 
 }
 
