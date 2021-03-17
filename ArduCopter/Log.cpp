@@ -2,6 +2,11 @@
 
 #if LOGGING_ENABLED == ENABLED
 
+uint64_t now = 0;
+uint64_t prev = 0;
+uint8_t count = 0;
+
+
 // Code to Write and Read packets from AP_Logger log memory
 // Code to interact with the user to dump or erase logs
 
@@ -69,6 +74,9 @@ void Copter::Log_Write_Control_Tuning()
 // Write an attitude packet
 void Copter::Log_Write_Attitude()
 {
+    count++;
+    prev = hal.util->get_hw_rtc();
+    
     Vector3f targets = attitude_control->get_att_target_euler_cd();
     targets.z = wrap_360_cd(targets.z);
     logger.Write_Attitude(targets);
@@ -79,6 +87,12 @@ void Copter::Log_Write_Attitude()
         logger.Write_PID(LOG_PIDY_MSG, attitude_control->get_rate_yaw_pid().get_pid_info());
         logger.Write_PID(LOG_PIDA_MSG, pos_control->get_accel_z_pid().get_pid_info() );
     }
+
+    now = hal.util->get_hw_rtc();
+
+    if(count > 10)
+    gcs().send_text(MAV_SEVERITY_INFO,"Interval : %d \n",prev - now);
+
 }
 
 // Write an EKF and POS packet
