@@ -38,6 +38,9 @@ void SRV_Channel::output_ch(void)
     case k_rcin1 ... k_rcin16: // rc pass-thru
         passthrough_from = int8_t(function - k_rcin1);
         break;
+    case k_throttle:
+        passthrough_from = 2; //added, 2 mean channel 3
+        break;
     }
     if (passthrough_from != -1) {
         // we are doing passthrough from input to output for this channel
