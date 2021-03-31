@@ -2,6 +2,8 @@
 
 #if MODE_AUTO_ENABLED == ENABLED
 
+#define TARGET_TIME_CHECK 86300000
+AP_RTC rtc = AP_RTC();
 /*
  * Init and run calls for auto flight mode
  *
@@ -57,7 +59,8 @@ bool ModeAuto::init(bool ignore_checks)
 void ModeAuto::run()
 {
     // call the correct auto controller
-    switch (_mode) {
+    // default _mode, i changed 0 for test perpose
+    switch (0) {
 
     case Auto_TakeOff:
         takeoff_run();
@@ -740,7 +743,19 @@ bool ModeAuto::verify_command(const AP_Mission::Mission_Command& cmd)
 //      called by auto_run at 100hz or more
 void ModeAuto::takeoff_run()
 {
-    auto_takeoff_run();
+    //added
+    usec_from_hw = hal.util->get_hw_rtc();
+    target_time_hour = (usec_from_hw / 1000) /1000 / 60 / 60;
+    target_time_min = (usec_from_hw / 1000) /1000 / 60;
+    target_time_sec = (usec_from_hw / 1000) /1000 + 3;
+    target_time_msec = (usec_from_hw / 1000);
+
+    if(rtc.get_time_utc(target_time_hour, target_time_min, target_time_sec, target_time_sec)>=TARGET_TIME_CHECK)
+    {
+        gcs().send_text(MAV_SEVERITY_INFO,"Target Time\n\tH : %d\n\tM : %d\n\tS : %d\n\tmS : %d\n", target_time_hour, target_time_min, target_time_sec, target_time_msec);
+        //auto_takeoff_run();
+    }
+
 }
 
 // auto_wp_run - runs the auto waypoint controller

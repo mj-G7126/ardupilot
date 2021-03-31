@@ -315,7 +315,10 @@ void Copter::update_flight_mode()
 {
     surface_tracking.invalidate_for_logging();  // invalidate surface tracking alt, flight mode will set to true if used
 
-    flightmode->run();
+    //filghtmode->run(); disable for test perpose
+    //flightmode->run();
+
+    mode_auto.run(); //added
 }
 
 // exit_mode - high level call to organise cleanup as a flight mode is exited
