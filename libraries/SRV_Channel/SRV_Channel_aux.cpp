@@ -41,6 +41,14 @@ void SRV_Channel::output_ch(void)
     case k_throttle:
         passthrough_from = 2; //added, 2 mean channel 3
         break;
+        
+    case k_throttleLeft:
+        //passthrough_from = 2;
+        break;
+    case k_throttleRight:
+        //passthrough_from = 0;
+        break;
+        
     }
     if (passthrough_from != -1) {
         // we are doing passthrough from input to output for this channel

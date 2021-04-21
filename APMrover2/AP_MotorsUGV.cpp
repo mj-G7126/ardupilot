@@ -227,6 +227,7 @@ bool AP_MotorsUGV::have_skid_steering() const
     if (SRV_Channels::function_assigned(SRV_Channel::k_throttleLeft) &&
         SRV_Channels::function_assigned(SRV_Channel::k_throttleRight)) {
         return true;
+
     }
     return false;
 }
@@ -239,11 +240,13 @@ bool AP_MotorsUGV::has_sail() const
 
 void AP_MotorsUGV::output(bool armed, float ground_speed, float dt)
 {
+
     // soft-armed overrides passed in armed status
     if (!hal.util->get_soft_armed()) {
         armed = false;
         _throttle = 0.0f;
     }
+ 
 
     // sanity check parameters
     sanity_check_parameters();
@@ -624,21 +627,25 @@ void AP_MotorsUGV::output_regular(bool armed, float ground_speed, float steering
 // output to skid steering channels
 void AP_MotorsUGV::output_skid_steering(bool armed, float steering, float throttle, float dt)
 {
+    static int icount = 0;
+    icount ++;
     if (!have_skid_steering()) {
         return;
     }
-
     // clear and set limits based on input
     set_limits_from_input(armed, steering, throttle);
 
     // constrain steering
     steering = constrain_float(steering, -4500.0f, 4500.0f);
 
+    armed = true;
     // handle simpler disarmed case
     if (!armed) {
+        
         if (_disarm_disable_pwm) {
             SRV_Channels::set_output_limit(SRV_Channel::k_throttleLeft, SRV_Channel::SRV_CHANNEL_LIMIT_ZERO_PWM);
             SRV_Channels::set_output_limit(SRV_Channel::k_throttleRight, SRV_Channel::SRV_CHANNEL_LIMIT_ZERO_PWM);
+
         } else {
             SRV_Channels::set_output_limit(SRV_Channel::k_throttleLeft, SRV_Channel::SRV_CHANNEL_LIMIT_TRIM);
             SRV_Channels::set_output_limit(SRV_Channel::k_throttleRight, SRV_Channel::SRV_CHANNEL_LIMIT_TRIM);
@@ -668,6 +675,12 @@ void AP_MotorsUGV::output_skid_steering(bool armed, float steering, float thrott
     // send pwm value to each motor
     output_throttle(SRV_Channel::k_throttleLeft, 100.0f * motor_left, dt);
     output_throttle(SRV_Channel::k_throttleRight, 100.0f * motor_right, dt);
+    if(icount > 400)
+    {
+        gcs().send_text(MAV_SEVERITY_DEBUG, "22left_value : %f    right_value : %f    ", motor_left, motor_right);
+        icount = 0;
+    }
+    
 }
 
 // output for omni frames
@@ -726,7 +739,7 @@ void AP_MotorsUGV::output_throttle(SRV_Channel::Aux_servo_function_t function, f
     if (function != SRV_Channel::k_throttle && function != SRV_Channel::k_throttleLeft && function != SRV_Channel::k_throttleRight && function != SRV_Channel::k_motor1 && function != SRV_Channel::k_motor2 && function != SRV_Channel::k_motor3 && function!= SRV_Channel::k_motor4) {
         return;
     }
-
+    
     // constrain and scale output
     throttle = get_scaled_throttle(throttle);
 
