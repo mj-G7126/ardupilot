@@ -223,6 +223,8 @@ void Copter::setup()
 
     // initialise the main loop scheduler
     scheduler.init(&scheduler_tasks[0], ARRAY_SIZE(scheduler_tasks), MASK_LOG_PM);
+
+    hal.uartD->begin(921600);
 }
 
 void Copter::loop()

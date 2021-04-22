@@ -15,7 +15,10 @@ AP_CM3::AP_CM3()
 
 void AP_CM3::send_cm3_message()
 {
+
+    
     hal.uartD->printf("message from FC\n");
+
     
 }
 
