@@ -445,7 +445,7 @@ void Copter::one_hz_loop()
 
     arming.update();
 
-    AP::cm3().send_cm3_message();
+    //AP::cm3().send_cm3_message();
 
     if (!motors->armed()) {
         // make it possible to change ahrs orientation at runtime during initial config
