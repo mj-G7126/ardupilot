@@ -32,7 +32,8 @@
 #include "bl_protocol.h"
 #include "can.h"
 
-extern "C" {
+extern "C"
+{
     int main(void);
 }
 
@@ -46,13 +47,16 @@ struct boardinfo board_info;
 #define HAL_STAY_IN_BOOTLOADER_VALUE 0
 #endif
 
+#define LINE_PE14 PAL_LINE(GPIOE, 14)
+
 int main(void)
 {
     board_info.board_type = APJ_BOARD_ID;
     board_info.board_rev = 0;
-    board_info.fw_size = (BOARD_FLASH_SIZE - FLASH_BOOTLOADER_LOAD_KB)*1024;
-    if (BOARD_FLASH_SIZE > 1024 && check_limit_flash_1M()) {
-        board_info.fw_size = (1024 - FLASH_BOOTLOADER_LOAD_KB)*1024;        
+    board_info.fw_size = (BOARD_FLASH_SIZE - FLASH_BOOTLOADER_LOAD_KB) * 1024;
+    if (BOARD_FLASH_SIZE > 1024 && check_limit_flash_1M())
+    {
+        board_info.fw_size = (1024 - FLASH_BOOTLOADER_LOAD_KB) * 1024;
     }
 
     bool try_boot = false;
@@ -68,33 +72,42 @@ int main(void)
 
 #ifndef NO_FASTBOOT
     enum rtc_boot_magic m = check_fast_reboot();
-    if (stm32_was_watchdog_reset()) {
+    if (stm32_was_watchdog_reset())
+    {
         try_boot = true;
         timeout = 0;
-    } else if (m == RTC_BOOT_HOLD) {
+    }
+    else if (m == RTC_BOOT_HOLD)
+    {
         timeout = 0;
-    } else if (m == RTC_BOOT_FAST) {
+    }
+    else if (m == RTC_BOOT_FAST)
+    {
         try_boot = true;
         timeout = 0;
     }
 #if HAL_USE_CAN == TRUE
-    else if ((m & 0xFFFFFF00) == RTC_BOOT_CANBL) {
+    else if ((m & 0xFFFFFF00) == RTC_BOOT_CANBL)
+    {
         try_boot = false;
         timeout = 10000;
         can_set_node_id(m & 0xFF);
     }
     can_check_update();
-    if (!can_check_firmware()) {
+    if (!can_check_firmware())
+    {
         // bad firmware CRC, don't try and boot
         timeout = 0;
         try_boot = false;
-    } else if (timeout != 0) {
+    }
+    else if (timeout != 0)
+    {
         // fast boot for good firmware
         try_boot = true;
         timeout = 1000;
     }
 #endif
-    
+
     // if we fail to boot properly we want to pause in bootloader to give
     // a chance to load new app code
     set_fast_reboot(RTC_BOOT_OFF);
@@ -102,13 +115,15 @@ int main(void)
 
 #ifdef HAL_GPIO_PIN_STAY_IN_BOOTLOADER
     // optional "stay in bootloader" pin
-    if (palReadLine(HAL_GPIO_PIN_STAY_IN_BOOTLOADER) == HAL_STAY_IN_BOOTLOADER_VALUE) {
+    if (palReadLine(HAL_GPIO_PIN_STAY_IN_BOOTLOADER) == HAL_STAY_IN_BOOTLOADER_VALUE)
+    {
         try_boot = false;
         timeout = 0;
     }
 #endif
 
-    if (try_boot) {
+    if (try_boot)
+    {
         jump_to_app();
     }
 
@@ -120,16 +135,44 @@ int main(void)
 #endif
     flash_init();
 
+    palClearLine(LINE_PE14);
+    palSetLineMode(LINE_PE14, PAL_MODE_INPUT_PULLUP);
+
+    int test = 0;
+    /*
+    while (1)
+    {
+        if(!palReadLine(LINE_PE14))
+        break;
+        //for boot convenient, not for loop
+    }
+    */
+    
+    while (!palReadLine(LINE_PE14))
+    {
+        if (test >= 5000000)
+        {
+            uprintf("in test mode\n");
+            uprintf("CH1 STATE : %d \n", palReadLine(LINE_PE14));
+
+            test = 0;
+        }
+        test++;
+    }
+
 #if defined(BOOTLOADER_DEV_LIST)
-    while (true) {
+    while (true)
+    {
         bootloader(timeout);
         jump_to_app();
     }
 #else
     // CAN only
-    while (true) {
+    while (true)
+    {
         uint32_t t0 = AP_HAL::millis();
-        while (timeout == 0 || AP_HAL::millis() - t0 <= timeout) {
+        while (timeout == 0 || AP_HAL::millis() - t0 <= timeout)
+        {
             can_update();
             chThdSleep(chTimeMS2I(1));
         }
@@ -137,5 +180,3 @@ int main(void)
     }
 #endif
 }
-
-
