@@ -78,7 +78,7 @@ define HAL_STORAGE_SIZE 16384
 # added code
 define BOOTLOADER_DEBUG SD7
 define HAL_USE_SERIAL_USB TRUE
-PE14 GPIO
+PE14 GPIO INPUT
 
 # Add CS pins to ensure they are high in bootloader
 PC1 MAG_CS CS
