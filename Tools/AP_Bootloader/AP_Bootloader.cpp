@@ -49,6 +49,32 @@ struct boardinfo board_info;
 
 #define LINE_PE14 PAL_LINE(GPIOE, 14)
 
+SPIDriver spid1;
+
+const SPIConfig spi_mpu9250 = {
+    false,
+    NULL,
+    GPIOC,
+    2,
+    0,
+    SPI_CR1_DS_2 | SPI_CR1_DS_1 | SPI_CR1_DS_0};
+
+const SPIConfig spi_20608 = {
+    false,
+    NULL,
+    GPIOC,
+    13,
+    0,
+    SPI_CR1_DS_2 | SPI_CR1_DS_1 | SPI_CR1_DS_0};
+
+const SPIConfig spi_ms5611 = {
+    false,
+    NULL,
+    GPIOD,
+    7,
+    0,
+    SPI_CR1_DS_2 | SPI_CR1_DS_1 | SPI_CR1_DS_0};
+
 int main(void)
 {
     board_info.board_type = APJ_BOARD_ID;
@@ -134,6 +160,27 @@ int main(void)
     can_start();
 #endif
     flash_init();
+    uint8_t mpu9250_id = 0;
+    spiInit();
+
+    /*
+    palSetPadMode(GPIOA, 5,
+                  PAL_MODE_ALTERNATE(3) | PAL_STM32_OSPEED_HIGHEST); // New SCK
+    palSetPadMode(GPIOA, 6,
+                  PAL_MODE_ALTERNATE(4) | PAL_STM32_OSPEED_HIGHEST); //New MISO
+    palSetPadMode(GPIOA, 7,
+                  PAL_MODE_ALTERNATE(4) | PAL_STM32_OSPEED_HIGHEST); // New MOSI
+    palSetPadMode(GPIOC, 2,
+                  PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); // New CS
+
+    */
+
+    spiStart(SPID1, spi_mpu9250);
+    spiSelect(SPID1);
+    txbuf = 117;
+    spiExchange(SPID1, 512, txbuf, rxbuf);
+    mpu9250_id = rxbuf;
+
 
     palClearLine(LINE_PE14);
     palSetLineMode(LINE_PE14, PAL_MODE_INPUT_PULLUP);
@@ -147,7 +194,7 @@ int main(void)
         //for boot convenient, not for loop
     }
     */
-    
+
     while (!palReadLine(LINE_PE14))
     {
         if (test >= 5000000)
