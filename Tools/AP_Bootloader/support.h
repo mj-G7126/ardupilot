@@ -10,6 +10,37 @@ struct boardinfo {
     uint32_t	fw_size;
 } __attribute__((packed));
 
+
+const SPIConfig spi_mpu9250 = {
+    false,
+    NULL,
+    GPIOC,
+    2,
+    SPI_CR1_BR | SPI_CR1_CPOL | SPI_CR1_CPHA,
+    0
+    };
+
+const SPIConfig spi_20608 = {
+    false,
+    NULL,
+    GPIOC,
+    13,
+    SPI_CR1_BR | SPI_CR1_CPOL | SPI_CR1_CPHA,
+    0
+    };
+
+const SPIConfig spi_ms5611 = {
+    false,
+    NULL,
+    GPIOD,
+    7,
+    SPI_CR1_BR | SPI_CR1_CPOL | SPI_CR1_CPHA |SPI_CR1_BIDIMODE | SPI_CR1_BIDIOE | 
+	SPI_CR1_SPE | SPI_CR1_MSTR,
+    0
+};
+// SPI 통신 설정 위에서 부터 차례로(spi_ms5611)
+// 순환모드 false, callback 미사용, CS 핀 D포트, 7번, CR1, CR2
+
 extern struct boardinfo board_info;
 
 void init_uarts(void);

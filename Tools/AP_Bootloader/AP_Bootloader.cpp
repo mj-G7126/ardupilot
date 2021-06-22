@@ -32,6 +32,11 @@
 #include "bl_protocol.h"
 #include "can.h"
 
+#define SPI_BUFFERS_SIZE    8U  
+
+static uint8_t txbuf[SPI_BUFFERS_SIZE];
+static uint8_t rxbuf[SPI_BUFFERS_SIZE];
+
 extern "C"
 {
     int main(void);
@@ -48,32 +53,6 @@ struct boardinfo board_info;
 #endif
 
 #define LINE_PE14 PAL_LINE(GPIOE, 14)
-
-SPIDriver spid1;
-
-const SPIConfig spi_mpu9250 = {
-    false,
-    NULL,
-    GPIOC,
-    2,
-    0,
-    SPI_CR1_DS_2 | SPI_CR1_DS_1 | SPI_CR1_DS_0};
-
-const SPIConfig spi_20608 = {
-    false,
-    NULL,
-    GPIOC,
-    13,
-    0,
-    SPI_CR1_DS_2 | SPI_CR1_DS_1 | SPI_CR1_DS_0};
-
-const SPIConfig spi_ms5611 = {
-    false,
-    NULL,
-    GPIOD,
-    7,
-    0,
-    SPI_CR1_DS_2 | SPI_CR1_DS_1 | SPI_CR1_DS_0};
 
 int main(void)
 {
@@ -160,51 +139,81 @@ int main(void)
     can_start();
 #endif
     flash_init();
-    uint8_t mpu9250_id = 0;
     spiInit();
 
-    /*
+
+    // SPI1 기본 설정   PAL_MODE_ALTERNATE 번호 체크 요망
     palSetPadMode(GPIOA, 5,
-                  PAL_MODE_ALTERNATE(3) | PAL_STM32_OSPEED_HIGHEST); // New SCK
+                  PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST); // New SCK
     palSetPadMode(GPIOA, 6,
-                  PAL_MODE_ALTERNATE(4) | PAL_STM32_OSPEED_HIGHEST); //New MISO
+                  PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST); //New MISO
     palSetPadMode(GPIOA, 7,
-                  PAL_MODE_ALTERNATE(4) | PAL_STM32_OSPEED_HIGHEST); // New MOSI
-    palSetPadMode(GPIOC, 2,
+                  PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST); // New MOSI
+    palSetPadMode(GPIOD, 7,
                   PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); // New CS
+    
+    spiAcquireBus(&SPID1);
+    spiStart(&SPID1, &spi_ms5611);
+    spiSelect(&SPID1);
 
-    */
+    *rxbuf = 0x00;  //RX 버퍼 수신 값을 확인하기 위해서 0으로 초기화 했음
+    *txbuf = 0x1E;
+    
+    spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf); //SPI 송신 및 수신 동작 하는 함수
+    //prev = *rxbuf;
 
-    spiStart(SPID1, spi_mpu9250);
-    spiSelect(SPID1);
-    txbuf = 117;
-    spiExchange(SPID1, 512, txbuf, rxbuf);
-    mpu9250_id = rxbuf;
+    *txbuf = 0xAE;
 
+    spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
+
+    *txbuf = 0x44;
+
+    spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
 
     palClearLine(LINE_PE14);
-    palSetLineMode(LINE_PE14, PAL_MODE_INPUT_PULLUP);
+    palSetLineMode(LINE_PE14, PAL_MODE_INPUT_PULLUP); // AUX 1번 핀을 풀업 상태로 기본 설정
 
-    int test = 0;
-    /*
-    while (1)
+   *txbuf = 0xA0;
+    spiStartExchange(&SPID1,SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
+
+    while (!palReadLine(LINE_PE14)) // AUX 1번 핀을 GND와 쇼트 시킨 상태에서 전원을 연결하면 진단 모드로 진입, 빼는 순간 초기화 진행
     {
-        if(!palReadLine(LINE_PE14))
-        break;
-        //for boot convenient, not for loop
-    }
-    */
 
-    while (!palReadLine(LINE_PE14))
-    {
-        if (test >= 5000000)
-        {
-            uprintf("in test mode\n");
-            uprintf("CH1 STATE : %d \n", palReadLine(LINE_PE14));
+        chThdSleepMilliseconds(1000);
+        spiReceive(&SPID1, SPI_BUFFERS_SIZE, &rxbuf);
+        uprintf(" C1 : %d, ",*rxbuf); // Serial 통신상 메시지 출력 함수
 
-            test = 0;
-        }
-        test++;
+        chThdSleepMilliseconds(1000);
+        *txbuf = 0x40;
+        spiSend(&SPID1, SPI_BUFFERS_SIZE, &txbuf);
+
+        chThdSleepMilliseconds(1000);
+        *txbuf = 0x00;
+        spiSend(&SPID1, SPI_BUFFERS_SIZE, &txbuf);
+
+        chThdSleepMilliseconds(1000);
+        spiReceive(&SPID1,SPI_BUFFERS_SIZE, &rxbuf);
+        uprintf(" ADC : %d, ",*rxbuf);
+
+        chThdSleepMilliseconds(1000);
+        *txbuf = 0xAE;
+        spiSend(&SPID1, SPI_BUFFERS_SIZE, &txbuf);
+
+        chThdSleepMilliseconds(1000);
+        spiReceive(&SPID1, SPI_BUFFERS_SIZE, &rxbuf);
+        uprintf(" CRC : %d, ",*rxbuf);
+
+        *txbuf = 0xAE;
+        chThdSleepMilliseconds(1000);
+        spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
+        uprintf(" CRC2 : %d, ",*rxbuf);
+
+        *txbuf = 0x00;
+        spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
+        uprintf(" Exchange Fuction ADC : %d",*rxbuf);
+        spiReceive(&SPID1, SPI_BUFFERS_SIZE, &rxbuf);
+        uprintf(". %d \n\r",*rxbuf);
+
     }
 
 #if defined(BOOTLOADER_DEV_LIST)
