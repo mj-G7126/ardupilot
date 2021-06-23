@@ -32,6 +32,7 @@
 #include "bl_protocol.h"
 #include "can.h"
 
+#define NEXTDELAY 800
 #define SPI_BUFFERS_SIZE    8U  
 
 static uint8_t txbuf[SPI_BUFFERS_SIZE];
@@ -45,7 +46,7 @@ extern "C"
 struct boardinfo board_info;
 
 #ifndef HAL_BOOTLOADER_TIMEOUT
-#define HAL_BOOTLOADER_TIMEOUT 5000
+#define HAL_BOOTLOADER_TIMEOUT 10000
 #endif
 
 #ifndef HAL_STAY_IN_BOOTLOADER_VALUE
@@ -142,77 +143,87 @@ int main(void)
     spiInit();
 
 
-    // SPI1 기본 설정   PAL_MODE_ALTERNATE 번호 체크 요망
+    // SPI1 기본 설정 
+    
     palSetPadMode(GPIOA, 5,
                   PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST); // New SCK
     palSetPadMode(GPIOA, 6,
                   PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST); //New MISO
     palSetPadMode(GPIOA, 7,
                   PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST); // New MOSI
-    palSetPadMode(GPIOD, 7,
+    palSetPadMode(GPIOC, 2,
                   PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); // New CS
-    
-    spiAcquireBus(&SPID1);
-    spiStart(&SPID1, &spi_ms5611);
+
+    spiStart(&SPID1, &spi_mpu9250);
     spiSelect(&SPID1);
 
     *rxbuf = 0x00;  //RX 버퍼 수신 값을 확인하기 위해서 0으로 초기화 했음
-    *txbuf = 0x1E;
-    
+    *txbuf = 0x6B;   //TX Power Management 1 주소
     spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf); //SPI 송신 및 수신 동작 하는 함수
-    //prev = *rxbuf;
 
-    *txbuf = 0xAE;
-
+    *txbuf = 0x92;  //TX Power Management 1 설정
     spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
 
-    *txbuf = 0x44;
-
+    *txbuf = 0x6A;  //USER_CONTROL register 주소
     spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
+
+    *txbuf = 0x10;  //USER_CONTROL register 설정
+    spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
+
+   
 
     palClearLine(LINE_PE14);
     palSetLineMode(LINE_PE14, PAL_MODE_INPUT_PULLUP); // AUX 1번 핀을 풀업 상태로 기본 설정
 
-   *txbuf = 0xA0;
-    spiStartExchange(&SPID1,SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
-
     while (!palReadLine(LINE_PE14)) // AUX 1번 핀을 GND와 쇼트 시킨 상태에서 전원을 연결하면 진단 모드로 진입, 빼는 순간 초기화 진행
     {
+        uprintf(" \n***************************************************\n\r");
+        uprintf(" spiExchange Function Test\n\r");
+        chThdSleepMilliseconds(NEXTDELAY);
+        *txbuf = 0x75 | 0x80;
+        spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
+        uprintf(" Who am I (0x80 OR Calc) : %X, \t",*rxbuf); // Serial 통신상 메시지 출력 함수
 
-        chThdSleepMilliseconds(1000);
-        spiReceive(&SPID1, SPI_BUFFERS_SIZE, &rxbuf);
-        uprintf(" C1 : %d, ",*rxbuf); // Serial 통신상 메시지 출력 함수
+        chThdSleepMilliseconds(NEXTDELAY);
+        *txbuf = 0x75;
+        spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
+        uprintf(" Who am I (NO 0x80) : %X\n\r",*rxbuf);
 
-        chThdSleepMilliseconds(1000);
-        *txbuf = 0x40;
+        chThdSleepMilliseconds(NEXTDELAY);
+        uprintf(" \nspiSend and spiRecive Function Test\n\r");
+        chThdSleepMilliseconds(NEXTDELAY);
+        *txbuf = 0x75 | 0x80;
         spiSend(&SPID1, SPI_BUFFERS_SIZE, &txbuf);
-
-        chThdSleepMilliseconds(1000);
-        *txbuf = 0x00;
-        spiSend(&SPID1, SPI_BUFFERS_SIZE, &txbuf);
-
-        chThdSleepMilliseconds(1000);
+        chThdSleepMilliseconds(NEXTDELAY);
         spiReceive(&SPID1,SPI_BUFFERS_SIZE, &rxbuf);
-        uprintf(" ADC : %d, ",*rxbuf);
+        uprintf(" Who am I (0x80 OR Calc) : %X, \t",*rxbuf);
 
-        chThdSleepMilliseconds(1000);
-        *txbuf = 0xAE;
+        chThdSleepMilliseconds(NEXTDELAY);
+        *txbuf = 0x75;
         spiSend(&SPID1, SPI_BUFFERS_SIZE, &txbuf);
+        chThdSleepMilliseconds(NEXTDELAY);
+        spiReceive(&SPID1,SPI_BUFFERS_SIZE, &rxbuf);
+        uprintf(" Who am I (NO 0x80) : %X \t\n\r",*rxbuf);
 
-        chThdSleepMilliseconds(1000);
-        spiReceive(&SPID1, SPI_BUFFERS_SIZE, &rxbuf);
-        uprintf(" CRC : %d, ",*rxbuf);
+        chThdSleepMilliseconds(NEXTDELAY);
+        uprintf(" \nspiSend and spiRecive Function Test(No delay)\n\r");
+        chThdSleepMilliseconds(NEXTDELAY);
+        *txbuf = 0x75 | 0x80;
+        spiSend(&SPID1, SPI_BUFFERS_SIZE, &txbuf);
+        spiReceive(&SPID1,SPI_BUFFERS_SIZE, &rxbuf);
+        uprintf(" Who am I (0x80 OR Calc) : %X, \t",*rxbuf);
 
-        *txbuf = 0xAE;
-        chThdSleepMilliseconds(1000);
-        spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
-        uprintf(" CRC2 : %d, ",*rxbuf);
+        chThdSleepMilliseconds(NEXTDELAY);
+        *txbuf = 0x75;
+        spiSend(&SPID1, SPI_BUFFERS_SIZE, &txbuf);
+        spiReceive(&SPID1,SPI_BUFFERS_SIZE, &rxbuf);
+        uprintf(" Who am I (NO 0x80) : %X \t\n\r",*rxbuf);
+        uprintf(" ***************************************************\n\r");
 
-        *txbuf = 0x00;
-        spiExchange(&SPID1, SPI_BUFFERS_SIZE, &txbuf, &rxbuf);
-        uprintf(" Exchange Fuction ADC : %d",*rxbuf);
-        spiReceive(&SPID1, SPI_BUFFERS_SIZE, &rxbuf);
-        uprintf(". %d \n\r",*rxbuf);
+        if(*rxbuf == 0x00)
+        led_on(LED_BOOTLOADER);
+        else
+        led_off(LED_BOOTLOADER);
 
     }
 

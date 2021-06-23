@@ -16,7 +16,7 @@ const SPIConfig spi_mpu9250 = {
     NULL,
     GPIOC,
     2,
-    SPI_CR1_BR | SPI_CR1_CPOL | SPI_CR1_CPHA,
+    SPI_CR1_BR| SPI_CR1_CPOL | SPI_CR1_CPHA | SPI_CR1_SPE | SPI_CR1_MSTR|SPI_CR1_SSM,
     0
     };
 
@@ -34,7 +34,7 @@ const SPIConfig spi_ms5611 = {
     NULL,
     GPIOD,
     7,
-    SPI_CR1_BR | SPI_CR1_CPOL | SPI_CR1_CPHA |SPI_CR1_BIDIMODE | SPI_CR1_BIDIOE | 
+    SPI_CR1_BR |SPI_CR1_BIDIMODE | SPI_CR1_BIDIOE | 
 	SPI_CR1_SPE | SPI_CR1_MSTR,
     0
 };
